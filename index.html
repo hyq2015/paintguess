@@ -1,0 +1,326 @@
+
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Paint Online</title>
+    <link rel="stylesheet" href="/index.css">
+
+</head>
+<body>
+    <div class="canvas-container">
+        <canvas id="canvas" height="500" width="800" ></canvas>
+        <a class="eraser" id="start">开始游戏</a>
+        <div class="menuarea">
+            <!-- <a class="eraser">当前工具:<span id="currentTool">画笔</span></a> -->
+            <a class="eraser" id="eraser">橡皮擦</a>
+            <a class="eraser active" id="pen">画笔</a>
+            <!-- <input type="range" value="1" max="100" mmin="0" step="1" id="pensize"/>   -->
+            <!-- <div class="eraser" id="penSizeValue">1</div> -->
+            <div class="pencolorchoose">
+                <label for="">画笔颜色</label><input type="color" id="penColor">
+            </div>
+            
+            <a class="eraser" id="clearcanvas">清除画布</a>
+            <!-- <a class="eraser" id="genimg">生成图片</a> -->
+            <!-- <a class="eraser" id="genImgSrc" download>下载图片</a> -->
+            <!-- <input class="input-area" id="widthinput" type="text" placeholder="宽" value="800"> -->
+            <!-- <input class="input-area" id="heightinput" type="text" placeholder="高" value="600"> -->
+            <!-- <a class="eraser" id="resizeCanvas">调整画布大小</a> -->
+            <!-- <div class="pencolorchoose">
+                    <label for="">画布颜色</label><input type="color" id="bgColor">
+                </div>
+            <a class="eraser" id="fillcanvas">填充画布</a> -->
+            
+        </div>
+        
+        
+        <div class="msgarea">
+            <div style="display:inline-block;"><span>剩余时间:</span><span id="timeleft"></span>秒</div>
+            <div style="display:inline-block;">
+                <input class="inputanswer" id="inputanswer" type="text" placeholder="写下答案">
+                <div class="eraser" id="submitanswer">提交</div>
+            </div>
+        </div>
+        <div style="height:200px;overflow-y:scroll">
+            <p>当前用户列表</p>
+            <ul id="userlist"></ul>
+            <p>消息列表</p>
+            <ul id="msglist"></ul>
+        </div>
+        
+    </div>
+    <script src="http://code.jquery.com/jquery-1.11.1.js"></script>
+    <script src="http://ovhjj2x39.bkt.clouddn.com/socketio.js"></script>
+    <script>
+        window.onload=function(){
+            
+            var userlist=document.getElementById('userlist');
+            var msglist=document.getElementById('msglist');
+            var widthinput=document.getElementById('widthinput');
+            var heightinput=document.getElementById('heightinput');
+            // var resizeCanvas=document.getElementById('resizeCanvas');
+            var currentPenType='pen';
+            var username='';
+            var currentPainter='';
+            var socket = io.connect('http://192.168.31.204:9090');
+            $('#start').on('click',function(){
+                if(!username){
+                    userLogin()
+                }else{
+
+                    socket.emit('gamestart')
+                }
+                
+            })
+            $('#submitanswer').on('click',function(){
+                if(username && currentPainter && username!=currentPainter && $('#inputanswer').val()!=''){
+                    socket.emit('submitanswer',{answer:$('#inputanswer').val(),username:username})
+                }
+            })
+            socket.on('login',function(){
+                userLogin()
+            });
+            socket.on('alert answer',function(data){
+                // if(data.type=='right'){
+                //     alert('回答正确!')
+                // }
+            });
+            socket.on('restart',function(){
+                $('#penColor').val('#000000')
+                // $('#bgColor').val('#ffffff')
+                canbgcolor='#ffffff'
+                socket.emit('gamestart')
+            })
+            socket.on('cannot start',function(){
+                alert('至少需要两位成员才能开启游戏')
+            });
+            socket.on('can start',function(){
+                alert('至少需要两位成员才能开启游戏')
+            });
+            socket.on('time left',function(data){
+                $('#timeleft').text(data.time)
+            });
+            socket.on('gameover',function(data){
+                alert('本轮游戏结束,下轮游戏将在'+data.time+'秒之后开始!')
+            });
+            
+            function userLogin(){
+                username=window.prompt('请输入用户名')
+                if(username && username!=''){
+                    socket.emit('userLogined',{name:username})
+                }
+            }
+            socket.on('client msgin',function(data){
+                var li=document.createElement('li');
+                if(data.type=='login'){
+                    li.innerText='欢迎'+data.name+'加入本房间';
+                }else if(data.type=='logout'){
+                    li.innerText=data.name+'退出了本房间';
+                }else if(data.type=='gamestart'){
+                    li.innerText='本轮的画家是: '+data.name;
+                    currentPainter=data.name;
+                }else if(data.type=='gameTitle'){
+                    li.innerText='本轮的题目是: '+data.name;
+                }else if(data.type=='rightanswer'){
+                    li.innerText='恭喜'+data.name+'猜出了答案!!';
+                }else if(data.type=='badanswer'){
+                    li.innerText=data.name+'回答了错误的答案: '+data.answer;
+                }else if(data.type=='gameend'){
+                    li.innerText=data.name+'退出了游戏,导致本轮比赛结束啦!';
+                }else if(data.type=='gameover'){
+                    li.innerText='本轮游戏结束,下轮游戏将在'+data.time+'秒之后开始!';
+                }
+                msglist.appendChild(li);
+            });
+
+            socket.on('client currentUserList',function(data){
+                userlist.innerHTML='';
+                if(data.length>0){
+                    for(var i=0;i<data.length;i++){
+                        var li=document.createElement('li');
+                        li.innerText=data[i];
+                        userlist.appendChild(li);
+                    }
+                }
+                
+            });
+
+            socket.on('client drawstart', function (data) {
+                // ctx.strokeStyle=$('#penColor').val();
+                ctx.strokeStyle='#000000';
+                ctx.save()  
+                ctx.beginPath()  
+                ctx.moveTo(data.data.x,data.data.y)
+            });
+            socket.on('client drawmove', function (data) {
+                 console.log('绘画中')
+                ctx.lineTo(data.data.x,data.data.y)
+                ctx.stroke()
+                ctx.restore(); 
+            });
+
+            socket.on('client clearimg', function (data) {
+                ctx.strokeStyle='#ffffff';
+                ctx.save()  
+                ctx.beginPath()  
+                ctx.clearRect(0,0,c.width,c.height);  
+                ctx.restore();
+            });
+            socket.on('client clearimgStart', function (data) {
+                // ctx.fillStyle=$('#bgColor').val();
+                // ctx.save()  
+                // ctx.beginPath()  
+                // ctx.arc(data.data.x,data.data.y,radius,0,2*Math.PI);  
+                // ctx.clip()  
+                // ctx.clearRect(0,0,c.width,c.height);  
+                // ctx.restore(); 
+
+                ctx.strokeStyle='#ffffff';
+                ctx.save()  
+                ctx.beginPath()  
+                ctx.moveTo(data.data.x,data.data.y)
+            });
+            socket.on('client clearimgMove', function (data) {
+                // ctx.save()  
+                // ctx.beginPath()  
+                // ctx.arc(data.data.x,data.data.y,radius,0,2*Math.PI);  
+                // ctx.clip()  
+                // ctx.clearRect(0,0,c.width,c.height);  
+                // ctx.restore();
+
+                ctx.lineTo(data.data.x,data.data.y)
+                ctx.stroke()
+                ctx.restore(); 
+            });
+            var eraser=document.getElementById('eraser');
+            var pen=document.getElementById('pen');
+            var clearcanvas=document.getElementById('clearcanvas');
+            // var genimg=document.getElementById('genimg');
+            var imgData=null;
+            var canbgcolor='#ffffff';
+            var c=document.getElementById('canvas');
+            var innerHeight=300;
+            var ctx=c.getContext('2d');
+            var pixratio=getPixelRatio(ctx);
+            console.log(getPixelRatio(ctx))
+//            var pixratio=1;
+            $('#canvas').attr('width',window.innerWidth*pixratio);
+            $('#canvas').attr('height',innerHeight*pixratio);
+            $('#canvas').css({
+                height:300+'px'
+            });
+            var startX=0,startY=0,moveX=0,moveY=0;//画
+            var clearStartX=0,clearStartY=0,clearMoveX=0,clearMoveY=0;//擦除
+            var radius=5;//橡皮擦半径
+            ctx.strokeStyle='blue';
+            ctx.lineWidth=2;
+            $('#penColor').on('change',function(e){
+                ctx.strokeStyle=e.target.value;
+            })
+            // $('#pensize').on('input',function(e){
+            //     ctx.lineWidth=e.target.value;
+            //     $('#penSizeValue').text(e.target.value)
+            // })
+            $('#fillcanvas').on('click',function(){
+                ctx.fillStyle=canbgcolor;
+                ctx.fillRect(0,0,c.width,c.height)
+            })
+            $('#bgColor').on('change',function(e){
+                canbgcolor=e.target.value;
+            })
+            // resizeCanvas.addEventListener('click',function(){
+            //     c.width=widthinput.value
+            //     c.height=heightinput.value
+            // })
+            eraser.addEventListener('click',function(){
+                currentPenType='ease'
+                $('#eraser').addClass('active')
+                $('#pen').removeClass('active')
+            })
+
+            
+            $('#pen').on('click',function(){
+                currentPenType='pen'
+                $('#eraser').removeClass('active')
+                $('#pen').addClass('active')
+            })
+            clearcanvas.addEventListener('click',function(){
+                if(currentPainter && username && currentPainter==username){
+                    socket.emit('clearimg')
+                }
+                
+            })
+
+            // genimg.addEventListener('click',function(){//生成画
+            //     imgData=ctx.getImageData(0,0,c.width,c.height);
+            //     let dataURL=c.toDataURL()
+            //     $('#genImgSrc').attr('href',dataURL)
+            //     // imgData=ctx.getImageData(0,0,200,200);
+            //     // socket.emit('drawimg',{data:dataURL})
+            // })
+            
+            
+            c.addEventListener('touchstart',touchstart)
+            c.addEventListener('touchend',function(){
+                c.removeEventListener('touchmove',touchmove)
+            })
+
+            function touchstart(e){
+                if(currentPainter && username && currentPainter==username){
+                    startX=e.offsetX ? e.offsetX : e.touches[0].clientX;
+                    startY=e.offsetY ? e.offsetY : e.touches[0].clientY;
+
+                    if(currentPenType=='pen'){
+                        // ctx.strokeStyle='#000000';
+                        // ctx.save()  
+                        // ctx.beginPath()  
+                        // ctx.moveTo(startX*pixratio,startY*pixratio)
+                        socket.emit('drawimgStart',{x:startX*pixratio,y:startY*pixratio})
+                    }else{
+                        // ctx.strokeStyle=$('#bgColor').val();
+                        // ctx.save()  
+                        // ctx.beginPath()  
+                        // ctx.moveTo(data.data.x,data.data.y)
+                        socket.emit('clearimgStart',{x:startX*pixratio,y:startY*pixratio})
+                    }
+                    
+                    c.addEventListener('touchmove',touchmove)
+                }
+                
+            }
+
+            function touchmove(e){
+                if(currentPainter && username && currentPainter==username){
+                    moveX=e.offsetX ? e.offsetX : e.touches[0].clientX;
+                    moveY=e.offsetY ? e.offsetY : e.touches[0].clientY;
+                    if(currentPenType=='pen'){
+                        // ctx.lineTo(moveX*pixratio,moveY*pixratio)
+                        // ctx.stroke()
+                        // ctx.restore(); 
+                        socket.emit('drawimgMove',{x:moveX*pixratio,y:moveY*pixratio})
+                    }else{
+                        socket.emit('clearimgMove',{x:moveX*pixratio,y:moveY*pixratio})
+                        
+                    }
+                }
+                
+                
+            }
+
+        }
+        function getPixelRatio(context) {
+            var backingStore = context.backingStorePixelRatio ||
+                context.webkitBackingStorePixelRatio ||
+                context.mozBackingStorePixelRatio ||
+                context.msBackingStorePixelRatio ||
+                context.oBackingStorePixelRatio ||
+                context.backingStorePixelRatio || 1;
+            return (window.devicePixelRatio || 1) / backingStore;
+        }
+      </script>
+</body>
+</html>
