@@ -2,8 +2,12 @@ var app = require('express')();
 let express = require('express');
 var server = require('http').Server(app);
 var io = require('socket.io')(server);
+app.all('*', (req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    next();
+});
 app.use(express.static(__dirname + '/'));//设置静态文件目录
-server.listen(9090);
+server.listen(9090,'localhost');
 
 app.get('/', function (req, res) {
     res.sendFile(__dirname + '/index.html');
@@ -109,6 +113,7 @@ io.on('connection', function (socket) {
     })
 
     socket.on('drawimgMove', function (data) {
+        console.log(socket.username);
         if (socket.username) {
             socket.emit('client drawmove', {data: data});
             socket.broadcast.emit('client drawmove', {data: data});
@@ -185,8 +190,8 @@ io.on('connection', function (socket) {
 
     socket.on('disconnect', function () {
         // console.log('退出登录')
-        console.log(socket)
-        console.log(socket.username)
+        // console.log(socket)
+        // console.log(socket.username)
         if (socket.username) {
             for (let i = 0; i < currentUsers.length; i++) {
                 if (currentUsers[i] == socket.username) {
@@ -200,7 +205,6 @@ io.on('connection', function (socket) {
             socket.broadcast.emit('client msgin', {name: socket.username, type: 'logout'});
             console.log(currentUsers.length)
             if (currentUsers.length < 2) {
-                console.log('通知用户游戏提前结束!')
                 singleRoungTime = 0;
                 socket.emit('client msgin', {name: socket.username, type: 'gameend'});
                 socket.broadcast.emit('client msgin', {name: socket.username, type: 'gameend'});

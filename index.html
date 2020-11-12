@@ -54,7 +54,7 @@
         
     </div>
     <script src="http://code.jquery.com/jquery-1.11.1.js"></script>
-    <script src="http://ovhjj2x39.bkt.clouddn.com/socketio.js"></script>
+    <script src="https://cdn.bootcdn.net/ajax/libs/socket.io/3.0.0-rc4/socket.io.js"></script>
     <script>
         window.onload=function(){
             
@@ -66,7 +66,7 @@
             var currentPenType='pen';
             var username='';
             var currentPainter='';
-            var socket = io.connect('http://192.168.31.204:9090');
+            var socket = io.connect('http://localhost:9090');
             $('#start').on('click',function(){
                 if(!username){
                     userLogin()
@@ -264,9 +264,10 @@
             // })
             
             
-            c.addEventListener('touchstart',touchstart)
-            c.addEventListener('touchend',function(){
-                c.removeEventListener('touchmove',touchmove)
+            // c.addEventListener('touchstart',touchstart)
+            c.addEventListener('mousedown',touchstart)
+            c.addEventListener('mouseup',function(){
+                c.removeEventListener('mousemove',touchmove)
             })
 
             function touchstart(e){
@@ -288,7 +289,7 @@
                         socket.emit('clearimgStart',{x:startX*pixratio,y:startY*pixratio})
                     }
                     
-                    c.addEventListener('touchmove',touchmove)
+                    c.addEventListener('mousemove',touchmove)
                 }
                 
             }
@@ -300,7 +301,8 @@
                     if(currentPenType=='pen'){
                         // ctx.lineTo(moveX*pixratio,moveY*pixratio)
                         // ctx.stroke()
-                        // ctx.restore(); 
+                        // ctx.restore();
+                        console.log('move');
                         socket.emit('drawimgMove',{x:moveX*pixratio,y:moveY*pixratio})
                     }else{
                         socket.emit('clearimgMove',{x:moveX*pixratio,y:moveY*pixratio})
